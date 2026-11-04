@@ -1,11 +1,11 @@
+
 # Puck Reskin Designer
 
 <div align="center">
 
 **An easy-to-use editor for creating and using custom rink reskins for [Puck](https://store.steampowered.com/app/2994020/Puck/), a popular first-person hockey video game.**
 
-<img width="700" alt="Puck Reskin Designer - GIF Demo" src="https://github.com/user-attachments/assets/a2b9ec30-b7b0-4ac0-8812-41691aaa9aaa">
-
+<img width="700" alt="Puck Reskin Designer - GIF Demo" src="https://github.com/user-attachments/assets/ffef3c00-c9a1-4602-89ee-04c7c571c24c" />
 </div>
 
 <br>
@@ -35,7 +35,7 @@ Go to the **[latest release](https://github.com/willgomberg/puck-reskin-designer
     <details>
     <summary>How to bypass SmartScreen</summary>
         
-    <img height="250" alt="Bypass SmartScreen (Windows) - Puck Reskin Designer" src="https://github.com/user-attachments/assets/ad893da0-111e-43d7-a034-ea5146983665" />
+    <img height="250" alt="Bypass SmartScreen (Windows) - Puck Reskin Designer" src="https://github.com/user-attachments/assets/c71b5d05-959c-4a0a-a615-0e908ef7bf77" />
 
     </details>
    
