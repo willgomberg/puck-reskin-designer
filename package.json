@@ -1,0 +1,29 @@
+{
+  "name": "puck-rink-reskin-creator",
+  "productName": "Puck Reskin Designer",
+  "description": "A design tool for creating rink reskins for the Puck video game.",
+  "author": "William Gomberg",
+  "license": "MIT",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --base ./",
+    "package": "npm run build && electron-builder --dir --publish never",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --universal --publish never",
+    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "^45.2.2",
+    "electron-builder": "^26.18.1",
+    "vite": "^8.3.5"
+  },
+  "allowScripts": {
+    "electron-winstaller": false
+  }
+}

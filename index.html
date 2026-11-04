@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="description" content="A focused editor for changing elements in a Puck rink reskin." />
+    <title>Puck Reskin Designer</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="app-brand">
+          <span class="app-mark" aria-hidden="true"></span>
+          <div class="app-brand-text">
+            <h1>Puck Reskin Designer</h1>
+          </div>
+        </div>
+
+        <div class="app-actions" aria-label="Project actions">
+          <div class="history-actions" role="group" aria-label="Edit history">
+            <button class="toolbar-button icon-button secondary-action" id="undo-button" type="button" disabled title="Nothing to undo" aria-label="Undo">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-2" />
+              </svg>
+            </button>
+            <button class="toolbar-button icon-button secondary-action" id="redo-button" type="button" disabled title="Nothing to redo" aria-label="Redo">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h2" />
+              </svg>
+            </button>
+          </div>
+          <button class="toolbar-button secondary-action" id="new-project-button" type="button" title="Start a new project" hidden disabled>New</button>
+          <button class="toolbar-button secondary-action" id="open-button" type="button" disabled>
+            Open
+          </button>
+          <input id="project-file-input" type="file" accept=".rskn,.json,application/json" hidden />
+          <button class="toolbar-button secondary-action" id="save-button" type="button" disabled>
+            Save
+          </button>
+          <button class="toolbar-button primary-action" id="export-png-button" type="button" disabled>
+            Export PNG
+          </button>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="Rink editor">
+        <aside class="layer-browser editor-panel" aria-labelledby="layers-heading">
+          <div class="panel-titlebar">
+            <h2 id="layers-heading">Layers</h2>
+            <div class="layer-help">
+              <button id="layer-help-button" class="layer-help-button" type="button" aria-label="Layer selection help" aria-describedby="layer-selection-help">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v1" />
+                </svg>
+              </button>
+              <div id="layer-selection-help" class="layer-selection-help" role="tooltip" hidden>
+                Click a name to select only that layer or element. To select multiple, use checkboxes or Ctrl+Click (⌘+Click on Mac). Down arrow expands elements; eye buttons control visibility.
+              </div>
+            </div>
+          </div>
+
+          <!-- Rink layer and element rows are populated by layer-browser.js -->
+          <div id="layer-list" class="layer-list"></div>
+
+          <section class="graphic-overlay-section" aria-labelledby="graphic-overlay-heading">
+            <h3 id="graphic-overlay-heading" class="section-label">Graphic Overlay</h3>
+            <button id="graphic-overlay-row" class="layer-item" type="button" data-action="import-graphic">
+              <span id="graphic-overlay-swatch" class="layer-swatch graphic-swatch is-upload" aria-hidden="true"></span>
+              <span id="graphic-overlay-name" class="layer-name">Add graphic overlay</span>
+            </button>
+            <input id="graphic-overlay-file-input" type="file" accept=".png,image/png" hidden />
+          </section>
+
+          <!-- Layers and elements share this row structure -->
+          <template id="layer-browser-row-template">
+            <div class="layer-row">
+              <input class="layer-checkbox" type="checkbox" />
+              <button class="visibility-toggle" type="button"></button>
+              <button class="layer-item" type="button">
+                <span class="layer-swatch" aria-hidden="true"></span>
+                <span class="layer-name"></span>
+              </button>
+              <button class="layer-expansion-toggle" type="button" hidden></button>
+            </div>
+          </template>
+
+          <!-- Nested element list for each layer with multiple elements -->
+          <template id="element-list-template">
+            <div class="element-selection" role="group" hidden>
+              <div class="element-selection-heading">
+                <span class="section-label">Elements</span>
+              </div>
+              <div class="element-options"></div>
+            </div>
+          </template>
+        </aside>
+
+        <section class="preview-panel" aria-labelledby="preview-heading">
+          <div class="preview-heading">
+            <div id="project-name-controls" class="project-name-controls">
+              <div id="project-name-display" class="project-name-display">
+                <h2 id="preview-heading"><span id="project-name" class="project-name" title="Untitled project">Untitled project</span></h2>
+                <button id="project-name-edit" class="toolbar-button secondary-action project-name-edit" type="button" title="Name and save project" aria-label="Name and save project" disabled>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z" /></svg>
+                </button>
+              </div>
+              <form id="project-rename-form" class="project-rename-form" hidden>
+                <input id="project-rename-input" type="text" maxlength="80" autocomplete="off" required aria-label="Project name" />
+                <button id="project-rename-confirm" class="toolbar-button secondary-action" type="submit">Rename</button>
+                <button id="project-rename-cancel" class="toolbar-button secondary-action" type="button" title="Cancel rename" aria-label="Cancel rename">×</button>
+              </form>
+            </div>
+            <div class="preview-heading-actions">
+              <span class="numeric-meta">8192 × 4096</span>
+              <div class="preview-zoom-controls" aria-label="Preview zoom controls">
+                <button
+                  id="zoom-out-button"
+                  type="button"
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                  class="secondary-action"
+                  disabled
+                >−</button>
+                <button
+                  id="zoom-reset-button"
+                  type="button"
+                  aria-label="Reset zoom to fit"
+                  title="Reset zoom to fit"
+                  class="secondary-action numeric-meta"
+                  disabled
+                >100%</button>
+                <button
+                  id="zoom-in-button"
+                  type="button"
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                  class="secondary-action"
+                  disabled
+                >+</button>
+              </div>
+            </div>
+          </div>
+          <!-- The live rink SVG is inserted here -->
+          <div id="rink-preview" class="rink-preview" aria-busy="true"></div>
+        </section>
+
+        <aside class="inspector-panel editor-panel" aria-label="Inspector">
+          <div class="inspector-tabs" role="tablist" aria-label="Inspector views">
+            <button
+              id="properties-tab"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="properties-panel"
+            >Properties</button>
+            <button
+              id="presets-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="presets-panel"
+              tabindex="-1"
+            >Presets</button>
+          </div>
+
+          <!-- Properties for the selected rink elements or the active graphic overlay -->
+          <section
+            id="properties-panel"
+            class="inspector-tabpanel layer-settings"
+            role="tabpanel"
+            aria-labelledby="properties-tab"
+          >
+            <div class="panel-heading">
+              <p class="eyebrow section-label">Active layer</p>
+              <h2 id="active-layer-heading">Ice</h2>
+            </div>
+
+            <form id="fill-form" class="inspector-form" novalidate>
+              <p id="selection-summary" class="control-meta">Selection: no rink elements.</p>
+              <fieldset class="choice-selector">
+                <legend class="control-label">Fill type <span id="fill-mixed-indicator" class="numeric-meta" hidden>· Mixed fills</span></legend>
+                <div class="choice-options">
+                  <label>
+                    <input type="radio" name="fill-type" value="solid" checked />
+                    <span>Solid</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="fill-type" value="linear-gradient" />
+                    <span>Linear gradient</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div id="solid-fill-controls" class="fill-controls">
+                <div class="field-group">
+                  <label class="control-label" for="solid-color-picker">Color</label>
+                  <input id="solid-color-picker" class="color-picker" type="color" value="#ffffff" />
+                </div>
+
+                <div class="field-group">
+                  <label class="control-label" for="solid-hex-input">Hex color</label>
+                  <input
+                    id="solid-hex-input"
+                    class="hex-color-input"
+                    type="text"
+                    value="#FFFFFF"
+                    maxlength="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                    aria-describedby="hex-help"
+                  />
+                  <small id="hex-help" class="control-meta">Example: #FF387A</small>
+                </div>
+              </div>
+
+              <div id="linear-gradient-fill-controls" class="fill-controls" hidden>
+                <div class="gradient-color-control">
+                  <span class="control-label">Gradient colors</span>
+                  <div class="gradient-picker">
+                    <input
+                      id="gradient-start-color-picker"
+                      class="gradient-stop-picker"
+                      type="color"
+                      value="#ffffff"
+                      aria-label="Choose start color"
+                      title="Choose start color"
+                    />
+                    <div id="gradient-preview-bar" class="gradient-preview-bar" aria-hidden="true"></div>
+                    <input
+                      id="gradient-end-color-picker"
+                      class="gradient-stop-picker"
+                      type="color"
+                      value="#000000"
+                      aria-label="Choose end color"
+                      title="Choose end color"
+                    />
+                  </div>
+
+                  <div class="gradient-stop-values">
+                    <label class="gradient-stop-value" for="gradient-start-hex-input">
+                      <span class="control-meta">Start</span>
+                      <input
+                        id="gradient-start-hex-input"
+                        class="hex-color-input"
+                        type="text"
+                        value="#FFFFFF"
+                        maxlength="7"
+                        spellcheck="false"
+                        autocomplete="off"
+                      />
+                    </label>
+                    <label class="gradient-stop-value" for="gradient-end-hex-input">
+                      <span class="control-meta">End</span>
+                      <input
+                        id="gradient-end-hex-input"
+                        class="hex-color-input"
+                        type="text"
+                        value="#000000"
+                        maxlength="7"
+                        spellcheck="false"
+                        autocomplete="off"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="gradient-direction-control">
+                  <div class="gradient-direction-heading label-value-row">
+                    <label class="control-label" for="gradient-direction-input">Direction</label>
+                    <output id="gradient-direction-description" class="control-meta">Left to right</output>
+                  </div>
+
+                  <div class="gradient-direction-editor">
+                    <button
+                      id="gradient-direction-dial"
+                      class="gradient-direction-dial"
+                      type="button"
+                      role="slider"
+                      aria-label="Gradient direction"
+                      aria-valuemin="0"
+                      aria-valuemax="359"
+                      aria-valuenow="0"
+                      aria-valuetext="0 degrees, left to right"
+                    >
+                      <span class="gradient-direction-arrow" aria-hidden="true">→</span>
+                    </button>
+
+                    <div class="gradient-direction-angle">
+                      <input
+                        id="gradient-direction-input"
+                        type="number"
+                        min="0"
+                        max="359"
+                        step="1"
+                        value="0"
+                        inputmode="numeric"
+                        aria-label="Gradient angle"
+                        aria-describedby="gradient-direction-description"
+                      />
+                      <span aria-hidden="true">°</span>
+                    </div>
+
+                    <div class="gradient-direction-presets" aria-label="Direction presets">
+                      <button type="button" data-gradient-direction="0" aria-label="Left to right">→</button>
+                      <button type="button" data-gradient-direction="90" aria-label="Top to bottom">↓</button>
+                      <button type="button" data-gradient-direction="180" aria-label="Right to left">←</button>
+                      <button type="button" data-gradient-direction="270" aria-label="Bottom to top">↑</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="opacity-controls range-control">
+                <div class="label-value-row">
+                  <label class="control-label" for="opacity-slider">Opacity</label>
+                  <output id="opacity-value" class="numeric-meta" for="opacity-slider">100%</output>
+                </div>
+                <input
+                  id="opacity-slider"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="100"
+                  aria-describedby="opacity-value"
+                />
+              </div>
+
+              <div class="inspector-actions">
+                <button class="button secondary-action" id="apply-button" type="submit">Apply to selection</button>
+                <button class="button secondary-action" data-discard-preview="rink" type="button" hidden>Discard Preview</button>
+              </div>
+              <div class="inspector-secondary-actions">
+                <button class="button secondary-action" id="reset-button" type="button">
+                  Reset selection to default
+                </button>
+              </div>
+            </form>
+
+            <form id="graphic-overlay-form" class="inspector-form" novalidate hidden>
+              <div class="graphic-dimensions" aria-live="polite">
+                <div class="label-value-row">
+                  <span class="control-label">Source</span>
+                  <output id="graphic-source-dimensions" class="numeric-meta"></output>
+                </div>
+                <div class="label-value-row">
+                  <span class="control-label">Displayed</span>
+                  <output id="graphic-display-dimensions" class="numeric-meta"></output>
+                </div>
+              </div>
+
+              <div class="range-control">
+                <div class="label-value-row">
+                  <label class="control-label" for="graphic-scale-slider">Scale</label>
+                  <output id="graphic-scale-value" class="numeric-meta" for="graphic-scale-slider">100%</output>
+                </div>
+                <div class="range-slider-with-marker">
+                  <input id="graphic-scale-slider" type="range" step="0.01" />
+                  <span id="graphic-scale-marker" class="range-default-marker" aria-hidden="true"></span>
+                </div>
+              </div>
+
+              <p id="graphic-quality-warning" class="quality-warning" role="status" hidden></p>
+
+              <div class="range-control">
+                <div class="label-value-row">
+                  <label class="control-label" for="graphic-opacity-slider">Opacity</label>
+                  <output id="graphic-opacity-value" class="numeric-meta" for="graphic-opacity-slider">100%</output>
+                </div>
+                <input id="graphic-opacity-slider" type="range" min="0" max="100" step="1" />
+              </div>
+
+              <div class="range-control">
+                <div class="label-value-row">
+                  <label class="control-label" for="graphic-offset-x-slider">Horizontal offset</label>
+                  <output id="graphic-offset-x-value" class="numeric-meta" for="graphic-offset-x-slider">0 px</output>
+                </div>
+                <div class="range-slider-with-marker">
+                  <input id="graphic-offset-x-slider" type="range" step="1" />
+                  <span class="range-default-marker" style="--default-position: 0.5" aria-hidden="true"></span>
+                </div>
+              </div>
+
+              <div class="range-control">
+                <div class="label-value-row">
+                  <label class="control-label" for="graphic-offset-y-slider">Vertical offset</label>
+                  <output id="graphic-offset-y-value" class="numeric-meta" for="graphic-offset-y-slider">0 px</output>
+                </div>
+                <div class="range-slider-with-marker">
+                  <input id="graphic-offset-y-slider" type="range" step="1" />
+                  <span class="range-default-marker" style="--default-position: 0.5" aria-hidden="true"></span>
+                </div>
+              </div>
+
+              <div class="inspector-actions">
+                <button id="apply-graphic-button" class="button secondary-action" type="submit">Apply changes</button>
+                <button class="button secondary-action" data-discard-preview="graphic" type="button" hidden>Discard Preview</button>
+              </div>
+              <div class="inspector-secondary-actions graphic-actions">
+                <button id="replace-graphic-button" class="button secondary-action" type="button">Replace PNG</button>
+                <button id="remove-graphic-button" class="button icon-button destructive-action" type="button" title="Delete graphic overlay" aria-label="Delete graphic overlay">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section
+            id="presets-panel"
+            class="inspector-tabpanel"
+            role="tabpanel"
+            aria-labelledby="presets-tab"
+            hidden
+          >
+            <form id="preset-form" class="inspector-form" novalidate>
+              <fieldset class="choice-selector">
+                <legend class="control-label">Preset type</legend>
+                <div class="choice-options">
+                  <label>
+                    <input
+                      type="radio"
+                      name="preset-type"
+                      value="standard"
+                      checked
+                    />
+                    <span>Standard</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="preset-type" value="gradient" />
+                    <span>Gradient</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="color-control">
+                <label class="control-label" for="preset-ice-color-picker">Ice color</label>
+                <div class="color-input-row">
+                  <input
+                    id="preset-ice-color-picker"
+                    class="color-picker"
+                    type="color"
+                    value="#ffffff"
+                  />
+                  <input
+                    id="preset-ice-hex-input"
+                    class="hex-color-input"
+                    type="text"
+                    value="#FFFFFF"
+                    maxlength="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                    aria-label="Ice hex color"
+                  />
+                </div>
+              </div>
+
+              <div class="color-control">
+                <label
+                  id="preset-accent-1-label"
+                  class="control-label"
+                  for="preset-accent-1-color-picker"
+                >Accent color 1</label>
+                <div class="color-input-row">
+                  <input
+                    id="preset-accent-1-color-picker"
+                    class="color-picker"
+                    type="color"
+                    value="#ac0026"
+                  />
+                  <input
+                    id="preset-accent-1-hex-input"
+                    class="hex-color-input"
+                    type="text"
+                    value="#AC0026"
+                    maxlength="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                    aria-label="Accent 1 hex color"
+                  />
+                </div>
+              </div>
+
+              <div class="color-control">
+                <label
+                  id="preset-accent-2-label"
+                  class="control-label"
+                  for="preset-accent-2-color-picker"
+                >Accent color 2</label>
+                <div class="color-input-row">
+                  <input
+                    id="preset-accent-2-color-picker"
+                    class="color-picker"
+                    type="color"
+                    value="#05328f"
+                  />
+                  <input
+                    id="preset-accent-2-hex-input"
+                    class="hex-color-input"
+                    type="text"
+                    value="#05328F"
+                    maxlength="7"
+                    spellcheck="false"
+                    autocomplete="off"
+                    aria-label="Accent 2 hex color"
+                  />
+                </div>
+              </div>
+
+              <div class="inspector-actions">
+                <button id="apply-preset-button" class="button secondary-action" type="submit" disabled>Apply preset</button>
+                <button class="button secondary-action" data-discard-preview="preset" type="button" hidden>Discard Preview</button>
+              </div>
+            </form>
+          </section>
+        </aside>
+      </section>
+
+      <footer class="status-bar">
+        <p id="status-message" class="status" role="status" aria-live="polite">
+          Loading rink template…
+        </p>
+      </footer>
+    </main>
+
+    <dialog id="welcome-dialog" class="editor-dialog file-dialog" aria-labelledby="welcome-title" aria-describedby="welcome-description">
+      <form method="dialog">
+        <div class="file-dialog-header">
+          <h2 id="welcome-title">Welcome to Puck Reskin Designer</h2>
+          <p id="welcome-description" class="dialog-help">A few tips before you create your first rink.</p>
+        </div>
+        <div class="file-dialog-content">
+          <div class="dialog-section">
+            <p class="dialog-section-title">Design your rink</p>
+            <p class="dialog-help">Select layers or individual elements, then edit their appearance in Properties or try Presets. Apply your changes to keep them. You can also add a PNG graphic overlay.</p>
+          </div>
+          <div class="dialog-section">
+            <p class="dialog-section-title">Save to keep editing</p>
+            <p class="dialog-help">Save creates an editable .rskn project you can open again later in this editor. Saving a project does not add your rink to Puck.</p>
+          </div>
+          <div class="dialog-section">
+            <p class="dialog-section-title">Export to use in Puck</p>
+            <p class="dialog-help">Export PNG creates the finished rink texture. Choose <b>Export to Puck for easy in-game use</b>, or save the PNG elsewhere.</p>
+            <p class="dialog-help"> <b>Using your rink in-game requires <a href="https://steamcommunity.com/workshop/filedetails/?id=3497550964" target="_blank" rel="noopener noreferrer">Toaster's Reskin Loader</a>. Subscribe to the mod from the provided link, and then enable it via the in-game mods menu.</b> With the mod enabled, open RESKIN MANAGER from main menu, navigate to Arenas tab, and select your rink reskin via the Ice selector.</p>
+          </div>
+        </div>
+        <div class="dialog-actions file-dialog-actions">
+          <button class="button primary-action" type="submit" autofocus>Get started</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="project-save-dialog" class="editor-dialog file-dialog" aria-labelledby="save-dialog-title" aria-describedby="save-dialog-description">
+      <form id="project-save-form">
+        <div class="file-dialog-header">
+          <h2 id="save-dialog-title">Save project</h2>
+          <p id="save-dialog-description" class="dialog-help">Saving your project allows you to return to Reskin Designer later to continue editing. To use your rink in Puck, you must use Export PNG.</p>
+        </div>
+        <div class="file-dialog-content">
+          <div class="dialog-section">
+            <label class="dialog-section-title" for="save-project-name">Project name</label>
+            <input id="save-project-name" type="text" placeholder="Rink project name" maxlength="80" autocomplete="off" required aria-describedby="save-project-name-help" />
+            <p id="save-project-name-help" class="dialog-help">This names your .rskn project file. Choose where to save it in the next window.</p>
+          </div>
+        </div>
+        <div class="dialog-actions file-dialog-actions">
+          <button id="save-dialog-cancel" class="button secondary-action" type="button">Cancel</button>
+          <button class="button primary-action" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="png-export-dialog" class="editor-dialog file-dialog" aria-labelledby="export-dialog-title">
+      <form id="png-export-form">
+        <div class="file-dialog-header">
+          <h2 id="export-dialog-title">Export PNG</h2>
+          <p class="dialog-help">Choose how to save your rink PNG.</p>
+        </div>
+
+        <div class="file-dialog-content">
+          <fieldset class="dialog-section export-destination">
+            <legend class="dialog-section-title">Destination</legend>
+            <label class="export-radio"><input type="radio" name="export-destination" value="pack" aria-describedby="export-pack-benefit" checked /> Export to Puck for easy in-game use<span class="export-recommendation">Recommended</span></label>
+            <p id="export-pack-benefit" class="dialog-help">Exports directly to a Puck reskin pack. You can then use your rink in-game via <a href="https://steamcommunity.com/workshop/filedetails/?id=3497550964" target="_blank" rel="noopener noreferrer">Toaster's Reskin Loader</a>.</p>
+            <label class="export-radio"><input id="export-elsewhere-radio" type="radio" name="export-destination" value="elsewhere" /> Save PNG elsewhere</label>
+          </fieldset>
+
+          <div id="export-pack-fields" class="export-pack-fields">
+            <div class="dialog-section">
+              <label class="dialog-section-title" for="export-rink-name">Rink name</label>
+              <input id="export-rink-name" type="text" maxlength="80" autocomplete="off" aria-describedby="export-rink-help" />
+              <p id="export-rink-help" class="dialog-help">The rink's name shown in Puck. The PNG filename is made from this name.</p>
+            </div>
+
+            <fieldset class="dialog-section" aria-describedby="export-pack-help">
+              <legend class="dialog-section-title">Reskin pack</legend>
+              <p id="export-pack-help" class="dialog-help">A pack is a collection of one or more reskins. You can add more rinks to it later.</p>
+              <label class="export-radio"><input id="export-existing-pack-radio" type="radio" name="export-pack-choice" value="existing" /> Add to an existing pack</label>
+              <select id="export-pack-select" aria-label="Existing reskin pack" hidden>
+                <button id="export-pack-selection" type="button"><selectedcontent></selectedcontent></button>
+              </select>
+              <label class="export-radio"><input id="export-new-pack-radio" type="radio" name="export-pack-choice" value="new" checked /> Create a new pack</label>
+              <label id="export-pack-name-label" class="control-label" for="export-pack-name">Pack name</label>
+              <input id="export-pack-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, My Rinks" />
+            </fieldset>
+
+            <fieldset class="dialog-section">
+              <legend class="dialog-section-title">Puck location</legend>
+              <div class="export-location-summary">
+                <p id="export-location-status" class="dialog-help" role="status">Looking for Puck…</p>
+                <button id="export-location-change" class="button secondary-action" type="button" aria-controls="export-location-controls" hidden>Change…</button>
+              </div>
+              <div id="export-location-controls" class="export-location-controls">
+                <input id="export-location-input" type="text" aria-label="Puck folder path" placeholder="Paste the Puck game folder path" />
+                <button id="export-location-use" class="button secondary-action" type="button">Use path</button>
+                <button id="export-location-browse" class="button secondary-action" type="button">Browse…</button>
+              </div>
+              <p id="export-location-help" class="dialog-help">In Steam, open Library → Puck → Browse local files. Choose or paste the folder Steam opens. The reskinpacks folder also works.</p>
+            </fieldset>
+
+            <div id="export-conflict" class="export-conflict" hidden>
+              <p id="export-conflict-text"></p>
+              <select id="export-replacement-select" aria-label="Rink to replace" hidden></select>
+            </div>
+          </div>
+          <p id="export-dialog-error" class="dialog-help" data-type="error" role="alert" hidden></p>
+        </div>
+
+        <div class="dialog-actions file-dialog-actions">
+          <p class="dialog-help">PNG · 8192 × 4096</p>
+          <button id="export-dialog-cancel" class="button secondary-action" type="button">Cancel</button>
+          <button id="export-dialog-submit" class="button primary-action" type="submit">Export to Puck</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="project-replacement-dialog" class="editor-dialog confirmation-dialog" aria-labelledby="project-replacement-title" aria-describedby="project-replacement-description">
+      <form method="dialog">
+        <h2 id="project-replacement-title">Start a new project?</h2>
+        <p id="project-replacement-description"></p>
+        <div class="dialog-actions">
+          <button id="project-replacement-back" class="button secondary-action" type="submit" value="back" autofocus>Back</button>
+          <button class="button secondary-action" type="submit" value="discard">Discard &amp; continue</button>
+          <button class="button primary-action" type="submit" value="save">Save &amp; continue</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="appearance-preview-dialog" class="editor-dialog confirmation-dialog" aria-labelledby="appearance-preview-title" aria-describedby="appearance-preview-description">
+      <form method="dialog">
+        <h2 id="appearance-preview-title">Continue with unapplied change?</h2>
+        <p id="appearance-preview-description">Your last edit is shown in the rink preview, but is not applied.</p>
+        <div class="dialog-actions">
+          <button id="preview-back-button" class="button secondary-action" type="submit" value="back" autofocus>Back</button>
+          <button id="preview-discard-button" class="button secondary-action" type="submit" value="discard">Discard &amp; continue</button>
+          <button id="preview-apply-button" class="button primary-action" type="submit" value="apply">Apply &amp; continue</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="update-dialog" class="editor-dialog update-dialog" aria-labelledby="update-title" aria-describedby="update-message">
+      <h2 id="update-title">Check for Updates</h2>
+      <p id="update-message" class="status" role="status" aria-live="polite"></p>
+      <p id="update-versions" hidden></p>
+      <p id="update-error" class="status" data-type="error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="update-close" class="button secondary-action" type="button" autofocus>Close</button>
+        <button id="update-retry" class="button secondary-action" type="button" hidden>Try Again</button>
+        <button id="update-open-release" class="button primary-action" type="button" hidden>Open Release Page</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/renderer/app.js"></script>
+  </body>
+</html>

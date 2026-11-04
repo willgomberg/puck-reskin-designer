@@ -1,0 +1,45 @@
+appId: io.github.willgomberg.puckreskindesigner
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: out
+
+mac:
+  icon: build/icons/macos.svg
+  target: dmg
+  # Ad-hoc signing; releases are not notarized
+  identity: "-"
+  hardenedRuntime: false
+win:
+  icon: build/icons/windows.svg
+  target: nsis
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  packElevateHelper: false
+
+# Main and preload run directly; Vite bundles the renderer into dist/
+files:
+  - package.json
+  - dist/**
+  - src/preload.js
+  - src/main/main.js
+  - src/main/application-menu.js
+  - src/main/update-check.js
+  - src/main/welcome-preferences.js
+  - src/main/project-files.js
+  - src/main/png-export.js
+  - src/main/game-detection.js
+  - src/main/reskin-pack.js
+  # Project-file validation also needs these shared renderer modules
+  - src/renderer/project-format.js
+  - src/renderer/layer-definitions.js
+  - src/renderer/graphic-overlay.js
+
+# Keep the project license and icon notices available outside app.asar
+extraResources:
+  - LICENSE
+  - README.md
