@@ -65,7 +65,7 @@ jobs:
           app="out/mac-universal/Puck Reskin Designer.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign --display --verbose=2 "$app"
-          lipo -verify_arch x86_64 arm64 "$app/Contents/MacOS/Puck Reskin Designer"
+          lipo "$app/Contents/MacOS/Puck Reskin Designer" -verify_arch x86_64 arm64
 
       - name: Record installer version, commit, and checksum
         shell: bash
