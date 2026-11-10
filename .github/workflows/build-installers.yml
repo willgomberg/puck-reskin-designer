@@ -1,0 +1,98 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'willgomberg/puck-reskin-designer'
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-2025
+            script: dist:win
+            extension: exe
+            artifact: windows-x64
+          - name: macOS universal
+            runner: macos-15
+            script: dist:mac
+            extension: dmg
+            artifact: mac-universal
+
+    steps:
+      - name: Check out the selected commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26.13.0'
+          cache: npm
+
+      - name: Set up npm
+        run: npm install --global npm@11.21.2
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Show tool and dependency versions
+        run: |
+          node --version
+          npm --version
+          npm ls --depth=0
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build installer
+        run: npm run ${{ matrix.script }}
+
+      - name: Verify macOS app signature and architectures
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="out/mac-universal/Puck Reskin Designer.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --display --verbose=2 "$app"
+          lipo -verify_arch x86_64 arm64 "$app/Contents/MacOS/Puck Reskin Designer"
+
+      - name: Record installer version, commit, and checksum
+        shell: bash
+        env:
+          INSTALLER_EXTENSION: ${{ matrix.extension }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+
+          const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+          const installers = readdirSync('out').filter(name => name.endsWith(`.${process.env.INSTALLER_EXTENSION}`));
+          if (installers.length !== 1) throw new Error('Expected exactly one installer');
+          const installer = installers[0];
+          const sha256 = createHash('sha256').update(readFileSync(`out/${installer}`)).digest('hex');
+          const info = { version, commit: process.env.GITHUB_SHA, installer, sha256 };
+          writeFileSync('out/build-info.json', `${JSON.stringify(info, null, 2)}\n`);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Version: ${version}\n\nCommit: ${info.commit}\n\nInstaller: ${installer}\n\nSHA-256: ${sha256}\n`);
+          NODE
+
+      - name: Upload installer and build information
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            out/*.${{ matrix.extension }}
+            out/build-info.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
